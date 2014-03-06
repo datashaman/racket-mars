@@ -2,7 +2,7 @@
   (module+ test
     (require rackunit))
   
-  (provide redcode-parse redcode-instruction)
+  (provide redcode-parse redcode-instruction redcode-program redcode-program-instructions)
   
   (require parser-tools/yacc
            parser-tools/lex
@@ -43,7 +43,7 @@
      (start start)
      (end EOF)
      (tokens value-tokens op-tokens)
-     (error (lambda (a name val start end)
+     (error (λ (a name val start end)
               (raise-read-error 
                "read-error"
                source-name
