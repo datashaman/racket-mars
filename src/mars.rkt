@@ -4,7 +4,7 @@
 
 (struct core (instructions config [warriors #:auto #:mutable]) #:transparent #:auto-value '())
 (struct warrior (program [queue #:auto #:mutable]
-                         [address #:auto #:mutable]) #:transparent)
+                         [start #:auto #:mutable]) #:transparent)
 
 (define (warrior-instructions warrior)
   (redcode-program-instructions (warrior-program warrior)))
@@ -33,7 +33,7 @@
 (define (check-address warriors address coresize mindistance)
   (if (empty? warriors)
     address
-    (if (too-close? address (warrior-address (first warriors)) coresize mindistance)
+    (if (too-close? address (warrior-start (first warriors)) coresize mindistance)
       (generate-address core coresize mindistance)
       (check-address (rest warriors) address coresize mindistance))))
 
@@ -46,7 +46,7 @@
            [mindistance (hash-ref (core-config core) "MINDISTANCE")]
            [address (generate-address core coresize mindistance)]
            [warrior (first warriors)])
-      (set-warrior-address! warrior address)
+      (set-warrior-start! warrior address)
       (set-core-warriors! core (append (core-warriors core)
                                        (list warrior)))
       (place-instructions
@@ -64,8 +64,8 @@
     the-core))
 
 (define (first-core options)
-  (let ([imp (warrior (redcode-parse "imp" (open-input-file "warriors/imp.redcode")))]
-        [dwarf (warrior (redcode-parse "dwarf" (open-input-file "warriors/dwarf.redcode")))])
+  (let ([imp (warrior (redcode-parse (open-input-file "warriors/imp.redcode")))]
+        [dwarf (warrior (redcode-parse (open-input-file "warriors/dwarf.redcode")))])
     (make-core (list dwarf imp) options)))
 
-(pretty-print (first-core (hash "CORESIZE" 1000)))
+(pretty-print (first-core (hash "CORESIZE" 2000)))

@@ -2,17 +2,21 @@
   (module+ test
     (require rackunit))
   
-  (provide redcode-parse redcode-instruction redcode-program redcode-program-instructions)
+  (provide (all-defined-out))
   
   (require parser-tools/yacc
            parser-tools/lex
            (prefix-in : parser-tools/lex-sre)
            syntax/readerr)
   
+  (struct redcode-directive (key value) #:transparent) 
   (struct redcode-instruction (label opcode modifier mode-a address mode-b address-b) #:transparent)
-  (struct redcode-program (label source instructions) #:transparent)
+  (struct redcode-program (input-port directives instructions) #:transparent)
   
-  (define-tokens value-tokens (LABEL OPCODE MODIFIER MODE ADDRESS))
+  (define (redcode-program-name program)
+    (hash-ref (redcode-program-directives program) "name" "anonymous"))
+  
+  (define-tokens value-tokens (LABEL OPCODE MODIFIER MODE ADDRESS DIRECTIVE))
   (define-empty-tokens op-tokens (EOF))
   
   (define-lex-abbrevs
@@ -23,12 +27,19 @@
     [mode (char-set "#$*@{<}>")]
     [sign (:or "" "+" "-")]
     [digit (:/ "0" "9")]
-    [address (:: sign (:+ digit))]
+    [address (:or label (:: sign (:+ digit)))]
     [label (:+ alphabetic)]
     [comment (:: #\; (:* (:~ #\newline)))])
   
   (define redcode-lexer
     (lexer-src-pos
+     [(:: ";redcode" (:* whitespace) #\newline)
+      (token-DIRECTIVE (cons "redcode" '()))]
+     [(:: ";redcode-" (:* (:~ #\newline)))
+      (token-DIRECTIVE (cons "redcode" (string-trim (second (regexp-match #rx";redcode-(.*)" lexeme)))))]
+     [(:: ";" (:or "name" "author" "description" "strategy") (:* (:~ #\newline)))
+      (token-DIRECTIVE (let ([match (regexp-match #rx";(name|author|description|strategy)(.*)" lexeme)])
+                    (cons (second match) (string-trim (third match)))))]
      [(:or whitespace #\, comment) (return-without-pos (redcode-lexer input-port))]
      [(eof) 'EOF]
      [opcode (token-OPCODE (string->symbol lexeme))]
@@ -69,6 +80,7 @@
        [(LABEL) $1])
       
       (exp
+       [(DIRECTIVE) (redcode-directive (car $1) (cdr $1))]
        [(label OPCODE modifier mode ADDRESS) (redcode-instruction $1 $2 $3 $4 $5 '() '())]
        [(label OPCODE modifier mode ADDRESS mode ADDRESS) (redcode-instruction $1 $2 $3 $4 $5 $6 $7)])
     
@@ -76,15 +88,25 @@
        [() '()]
        [(exp-list exp) (cons $2 $1)]))))
   
-  (define (redcode-parse name input-port)
+  (define (redcode-parse input-port)
     (port-count-lines! input-port)
-    (redcode-program name input-port ((redcode-parser name) (λ () (redcode-lexer input-port)))))
+    (let* ([lines ((redcode-parser input-port) (λ () (redcode-lexer input-port)))]
+           [directives (make-hash (map (λ (m) (cons (redcode-directive-key m) (redcode-directive-value m)))
+                                       (filter (λ (line) (redcode-directive? line))
+                                               lines)))]
+           [instructions (filter (λ (line) (redcode-instruction? line))
+                                 lines)])
+      (redcode-program input-port directives instructions)))
   
   (module+ test
-    (let ([imp (redcode-parse "imp" (open-input-file "warriors/imp.redcode"))]
-          [code (redcode-parse "dwarf" (open-input-file "warriors/dwarf.redcode"))])
-      [check-equal? (redcode-program-instructions imp) (list (redcode-instruction '() 'MOV '() '$ 0 '$ 1))]
-      [check-equal? (redcode-program-instructions code) (list 
+    (let ([imp (redcode-parse (open-input-file "warriors/imp.redcode"))]
+          [dwarf (redcode-parse (open-input-file "warriors/dwarf.redcode"))])
+      [check-equal? (redcode-program-name imp) "Imp"]
+      [check-equal? (redcode-program-name dwarf) "Dwarf"]
+
+      [check-equal? (redcode-program-instructions imp) (list
+                                                 (redcode-instruction '() 'MOV '() '$ 0 '$ 1))]
+      [check-equal? (redcode-program-instructions dwarf) (list 
                                                  (redcode-instruction '() 'ADD '() '|#| 4 '$ 3)
                                                  (redcode-instruction '() 'MOV '() '$ 2 '@ 2)
                                                  (redcode-instruction '() 'JMP '() '$ -2 '() '())

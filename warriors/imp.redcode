@@ -1,1 +1,5 @@
+;redcode-94
+;name Imp
+;author Marlin Forbes <marlinf@datashaman.com>
+
 MOV 0, 1
