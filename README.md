@@ -16,3 +16,4 @@ From Wikipedia:
 
 * [Core War]('https://en.wikipedia.org/wiki/Core_War')
 * [The beginners' guide to Redcode](http://vyznev.net/corewar/guide.html)
+* [Redcode Reference](http://corewar.cvs.sourceforge.net/viewvc/corewar/pmars/doc/redcode.ref?revision=1.1.1.1)
