@@ -14,5 +14,5 @@ From Wikipedia:
 > instruction), leaving the victorious program in sole possession
 > of the machine.
 
-[Core War]('https://en.wikipedia.org/wiki/Core_War')
-[The beginners' guide to Redcode](http://vyznev.net/corewar/guide.html)
+* [Core War]('https://en.wikipedia.org/wiki/Core_War')
+* [The beginners' guide to Redcode](http://vyznev.net/corewar/guide.html)
